@@ -76,7 +76,7 @@ function init() {
   scene = new THREE.Scene()
 
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100)
-  camera.position.set( 0, 0, 4.5 )
+  camera.position.set( 0, 0, 3.2 )
   camera.lookAt( 0, 0, 0 )
   scene.add(camera)
 
@@ -87,34 +87,55 @@ function init() {
   controls.maxAzimuthAngle = Math.PI / 10
   controls.enabled = false
 
-  areaLight = new THREE.HemisphereLight( 0xffffff, 0x000000, 20 )
-  //scene.add(areaLight)
+  areaLight = new THREE.HemisphereLight( 0xffffff, 0x000000, 30 )
+  scene.add( areaLight )
 
-  const al = new THREE.AmbientLight(0x2a2a2a, 20);
+  const al = new THREE.AmbientLight(0xffffff, 100);
   scene.add( al )
 
   spotLight = new THREE.SpotLight( 0xffffff, 10 )
   spotLight.position.set( 0, 0, 0 )
-  spotLight.angle = Math.PI / 3
+  spotLight.angle = Math.PI * 30
   spotLight.penumbra = 1
-  spotLight.distance = 50
+  spotLight.distance = 40
   spotLight.intensity = 100.0
   spotLight.focus = 1.0
   spotLight.decay = 1
-  spotLight.castShadow = false
-  spotLight.target.position.set(0, 0, -20)
+  spotLight.castShadow = true
+  spotLight.target.position.set(0, 0, -15)
   camera.add( spotLight )
   camera.add( spotLight.target )
+
+    const geometry = new THREE.PlaneGeometry(16/10, 9/10, 16, 16)
+    const positions = geometry.attributes.position
+
+    const axis = new THREE.Vector3(0, 1, 0)
+    const axisPosition = new THREE.Vector3(-2, 0, 2)
+    const vTemp = new THREE.Vector3(0, 0, 0)
+    let lengthOfArc
+    let angleOfArc
+
+    for (let i = 0; i < positions.count; i++){
+        vTemp.fromBufferAttribute(positions, i);
+        lengthOfArc = (vTemp.x - axisPosition.x);
+        angleOfArc = (lengthOfArc / axisPosition.z);
+        vTemp.setX(0).setZ(-axisPosition.z).applyAxisAngle(axis, -angleOfArc).add(axisPosition);
+        positions.setXYZ(i, vTemp.x, vTemp.y, vTemp.z);
+    }
   
   const video = document.getElementById( 'video' )
   const videoTex = new THREE.VideoTexture( video )
-  const plane = new THREE.PlaneGeometry(5, 2)
+  const plane = new THREE.PlaneGeometry(window.innerWidth, 5)
+  //const geometry = new THREE.SphereGeometry(5, 16, 8, 0, 2, 1, 1.2)
+  //planeCurve(plane, 4)
   const material = new THREE.MeshBasicMaterial({ map: videoTex })
-  const backdrop = new THREE.Mesh(plane, material)
-  backdrop.scale.multiplyScalar(2)
-  backdrop.position.set( 0,0,0 )
-  backdrop.position.z = -7
+  const backdrop = new THREE.Mesh(geometry, material)
+  backdrop.scale.multiplyScalar(24)
+  backdrop.position.set( -14,0,0 )
+  backdrop.position.z = -28
+  backdrop.rotation.set(0,1,0)
   scene.add(backdrop)
+  backdrop.position.y = -5
   //backdrop.position.y = 100//- ( window.innerHeight / 2 ) / 1.5
   
   const hdrEquirect = new RGBELoader().load(
@@ -192,12 +213,12 @@ function init() {
   composer.setSize( window.innerWidth, window.innerHeight )
   composer.setPixelRatio( window.devicePixelRatio, 2 )
 	composer.addPass( renderPass )
-  composer.addPass( fxaaPass )
+  //composer.addPass( fxaaPass )
   composer.addPass( bloomPass )
 
   const chroma = new ShaderPass( RGBShiftShader )
   chroma.uniforms['amount'].value = 0.0005
-  composer.addPass( chroma )
+  //composer.addPass( chroma )
 	
   const gltfLoader = new GLTFLoader()
   gltfLoader.load('https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/alvlogo.glb', (gltf) => {
@@ -211,12 +232,12 @@ function init() {
         if ( model.name == 'Logo' ) {
           logoModel = model
           logoModel.material = sickassGlass
-          logoModel.position.y = - ( window.innerHeight / 2 ) / 1.5
+          logoModel.position.y = - ( window.innerHeight / 2 ) / 1.1
         }
         if ( model.name == 'Text' ) {
           logoTextModel = model
           logoTextModel.material = textMat
-          logoTextModel.position.y = - ( window.innerHeight / 2 ) / 1.6
+          logoTextModel.position.y = - ( window.innerHeight / 2 ) / 1.1
         }
       }
     })
@@ -266,7 +287,30 @@ function onWindowResize() {
   composer.setPixelRatio( window.devicePixelRatio, 2 )
 }
 
-function planeCurve(g, z){
+function planeCurve(planeGeometry, centerBendZ)
+{
+  var curve = new THREE.CubicBezierCurve3(
+		planeGeometry.vertices[0],
+		new THREE.Vector3(planeGeometry.parameters.width/2, 0, centerBendZ ),
+		new THREE.Vector3(planeGeometry.parameters.width/2, 0, centerBendZ ),
+		planeGeometry.vertices[(planeGeometry.vertices.length/2) - 1]
+	);
+
+	var planePoints = curve.getPoints(Math.abs(planeGeometry.vertices.length/2)-1);
+
+	for(var edgeI = 1; edgeI < 3; edgeI++){
+		for(var pointI = 0; pointI < planePoints.length; pointI++){
+			planeGeometry.vertices[(edgeI === 2) ? planePoints.length + pointI : pointI].z = planePoints[pointI].z;
+		}
+	}
+
+	planeGeometry.computeFaceNormals();
+	planeGeometry.computeVertexNormals();
+
+	return planeGeometry;
+}
+
+/*function planeCurve(g, z){
 	
   let p = g.parameters;
   let hw = p.width * 0.5;
@@ -296,4 +340,4 @@ function planeCurve(g, z){
     pos.setXYZ(i, mainV.x, y, -mainV.y);
   }
   pos.needsUpdate = true;
-}
+}*/
