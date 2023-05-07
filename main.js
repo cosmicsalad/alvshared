@@ -1,18 +1,3 @@
-/*<script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1/bundled/lenis.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/vallafederico/glsl-gradient-webflow@master/dist/app.js"></script>
-<script defer src="https://cdn.jsdelivr.net/gh/vallafederico/hacking-webflow@master/dist/text-split.03.js"></script>
-<script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three/build/three.module.js",
-    "three/": "https://unpkg.com/three/"
-  }
-}
-</script>
-<script type="module">*/
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
@@ -312,5 +297,3 @@ function planeCurve(g, z){
   }
   pos.needsUpdate = true;
 }
-
-//</script>
