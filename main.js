@@ -58,8 +58,8 @@ function init() {
 		scrollY = window.scrollY
 	})
 
-	var width = winwidth
-	var height = winheight
+	var winwidth = window.innerWidth
+	var winheight = window.innerHeight
 	let mouseX = 0
 	let mouseY = 0
 
