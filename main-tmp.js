@@ -1,3 +1,14 @@
+<!-- import * as THREE from 'https://cdn.jsdelivr.net/npm/three/build/three.module.js'
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/loaders/GLTFLoader.js'
+import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/loaders/RGBELoader.js'
+import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/postprocessing/RenderPass.js'
+import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/postprocessing/ShaderPass.js'
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { FXAAShader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/shaders/FXAAShader.js'
+import { RGBShiftShader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/shaders/RGBShiftShader.js'
+import MeshTransmissionMaterialImpl from 'https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/transmissionMaterial.js' -->
+
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three/build/three.module.js'
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/loaders/GLTFLoader.js'
 import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/loaders/RGBELoader.js'
@@ -58,8 +69,8 @@ function init() {
 		scrollY = window.scrollY
 	})
 
-	var width = winwidth
-	var height = winheight
+	var width = window.innerWidth
+	var height = window.innerHeight
 	let mouseX = 0
 	let mouseY = 0
 
@@ -77,7 +88,7 @@ function init() {
 		antialias: true,
 	})
 
-	renderer.setSize(winwidth, winheight)
+	renderer.setSize(window.innerWidth, window.innerHeight)
 	renderer.setPixelRatio( Math.min(window.devicePixelRatio, 3) )
 	renderer.shadowMap.enabled = true
 	renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -89,7 +100,7 @@ function init() {
 
 	scene = new THREE.Scene()
 
-	camera = new THREE.PerspectiveCamera(45, winwidth / winheight, 0.1, 1000)
+	camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100)
 	camera.position.set( 0, 0, 3.2 )
 	camera.lookAt( 0, 0, 0 )
 	scene.add(camera)
@@ -107,19 +118,19 @@ function init() {
 	// const al = new THREE.AmbientLight(0xffffff, 100);
 	// camera.add( al )
 	
-	spotLight = new THREE.SpotLight( 0xffffff, 100 )
+	spotLight = new THREE.SpotLight( 0xffffff, 1000 )
 	spotLight.position.set( 0, 4, 20 )
 	spotLight.angle = Math.PI / 6
 	spotLight.penumbra = 1
 	spotLight.distance = 200
-	spotLight.intensity = 100.0
+	spotLight.intensity = 1000.0
 	spotLight.focus = 1.0
 	spotLight.decay = 1.0
 	camera.add( spotLight )
 	camera.add( spotLight.target )
 
 	// Bendy Plane
-	const bendyPlane = new THREE.PlaneGeometry(10/16, 10/9, 16, 16)
+	const bendyPlane = new THREE.PlaneGeometry(16/10, 9/10, 16, 16)
 	const positions = bendyPlane.attributes.position
 
 	const axis = new THREE.Vector3(0, 1, 0)
@@ -140,13 +151,13 @@ function init() {
 	const videoTex = new THREE.VideoTexture( video )
 	const material = new THREE.MeshBasicMaterial({ map: videoTex })
 	const backdrop = new THREE.Mesh(bendyPlane, material)
-	backdrop.scale.multiplyScalar(2)
-	backdrop.position.set( 0,0,0 )
-	backdrop.position.z = -10
+	backdrop.scale.multiplyScalar(24)
+	backdrop.position.set( -14,0,0 )
+	backdrop.position.z = -30
 	backdrop.rotation.set(0,1,0)
 	scene.add(backdrop)
 	backdrop.position.y = -5
-	//backdrop.position.y = 100//- ( winheight / 2 ) / 1.5
+	//backdrop.position.y = 100//- ( window.innerHeight / 2 ) / 1.5
   
 	const hdrEquirect = new RGBELoader().load(
 		"https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/dancing_hall_1k.hdr",
@@ -202,7 +213,7 @@ function init() {
 	]
 
 	const bloomPass = new UnrealBloomPass(
-		new THREE.Vector2(winwidth, winheight),
+		new THREE.Vector2(window.innerWidth, window.innerHeight),
 		bloomparams.bloomStrength,
 		bloomparams.bloomRadius,
 		bloomparams.bloomThreshold
@@ -220,34 +231,33 @@ function init() {
 	const fxaaPass = new ShaderPass( FXAAShader )
 
 	composer = new EffectComposer( renderer )
-	composer.setSize( winwidth, winheight )
+	composer.setSize( window.innerWidth, window.innerHeight )
 	composer.setPixelRatio( window.devicePixelRatio, 3 )
 	composer.addPass( renderPass )
 	composer.addPass( bloomPass )
-	//composer.addPass( fxaaPass )
 
 	const chroma = new ShaderPass( RGBShiftShader )
 	chroma.uniforms['amount'].value = 0.0004
-	//composer.addPass( chroma )
+	composer.addPass( chroma )
 		
 	const gltfLoader = new GLTFLoader()
 	gltfLoader.load('https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/alvlogo.glb', (gltf) => {
 		gltf.scene.scale.multiplyScalar( 1 / 100 )
 		gltf.scene.traverse( function ( obj ) {
 			if ( obj instanceof THREE.Mesh ) {
-				obj.castShadow = true
-				obj.receiveShadow = true
+				obj.castShadow = false
+				obj.receiveShadow = false
 				const model = obj          
 				if ( model.name == 'Logo' ) {
 					logoModel = model
 					logoModel.material = sickassGlass
-					logoModel.position.y = -( winheight / 2 ) / 1.35
+					logoModel.position.y = - ( window.innerHeight / 2 ) / 2.0
 					logoModel.rotation.x = 0.9
 				}
 				if ( model.name == 'Text' ) {
 					logoTextModel = model
 					logoTextModel.material = textMat
-					logoTextModel.position.y = -( winheight / 2 ) / 1.35
+					logoTextModel.position.y = - ( window.innerHeight / 2 ) / 2.0
 				}
 			}
 		})
@@ -260,7 +270,7 @@ function init() {
 		sparkles1.position.y = mouseY * -0.0001
 		sparkles2.position.x = mouseX * 0.0001
 		sparkles2.position.y = mouseY * -0.0001
-		camera.position.y =  - (scrollY / winheight) * 3
+		camera.position.y =  - (scrollY / window.innerHeight) * 3
 		requestAnimationFrame( render )
 	}
   
@@ -284,8 +294,8 @@ function composeRender() {
 }
 
 function onWindowResize() {
-	const width = winwidth
-	const height = winheight
+	const width = window.innerWidth
+	const height = window.innerHeight
 	const canvas = renderer.domElement
 	camera.aspect = canvas.clientWidth/canvas.clientHeight
 	camera.updateProjectionMatrix()
