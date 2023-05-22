@@ -1,6 +1,7 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three/build/three.module.js'
+import * as THREE from 'https://cdn.skypack.dev/three'
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/loaders/GLTFLoader.js'
 import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/loaders/RGBELoader.js'
+import { Lensflare, LensflareElement } from "https://cdn.jsdelivr.net/npm/three/examples/jsm/objects/Lensflare.js"
 import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/postprocessing/RenderPass.js'
 import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/postprocessing/ShaderPass.js'
@@ -8,183 +9,75 @@ import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm
 import { FXAAShader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/shaders/FXAAShader.js'
 import { RGBShiftShader } from 'https://cdn.jsdelivr.net/npm/three/examples/jsm/shaders/RGBShiftShader.js'
 import MeshTransmissionMaterialImpl from 'https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/transmissionMaterial.js'
+import * as dat from 'https://cdn.skypack.dev/pin/dat.gui@v0.7.9-2wtQAdFH5SRwnJLDWGNz/mode=imports/optimized/dat.gui.js'
 
-let logoModel
-let logoTextModel
-let scene, camera, canvas, composer, renderer, clock, renderPass
-let light1, light2
-let spotLight, spotLight2, spotLight3, areaLight
+// Texture Loading
+const textureLoader = new THREE.TextureLoader()
+
+let logoModel, logoTextModel
+let scene, camera, canvas, composer, renderer, renderPass
 let sickassGlass
-let mouseX, mouseY, sparkles1, sparkles2
+let sparkles1, sparkles2, mouseX, mouseY
 
 const bloomparams = {
-	exposure: 1,
-	bloomStrength: 0.5,
-	bloomThreshold: 0.85,
-	bloomRadius: 0.33
+	exposure: 0.6,
+	bloomStrength: 0.3,
+	bloomThreshold: 0.8,
+	bloomRadius: 0.4
 }
 
-const initLenis = () => {
-	const lenis = new Lenis({
-		duration: 1.3,
-		easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-		orientation: 'vertical',
-		gestureOrientation: 'vertical',
-		smoothWheel: true,
-		smoothTouch: false,
-		touchMultiplier: 2,
-		infinite: false,
-	})
-	function raf(time) {
-		lenis.raf(time)
-		requestAnimationFrame(raf)
-	}
-	requestAnimationFrame(raf)
-	lenis.start()
-	/*setTimeout(() => {
-		lenis.start()
-	}, 2000)*/
+const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
 }
-
-initLenis()
-init()
 
 function init() {
 
-	const objectsDistance = 3
+	const objectsDistance = 2
 	let scrollY = window.scrollY
+	mouseX = 0
+	mouseY = 0
 
-	window.addEventListener('scroll', () => {
-		scrollY = window.scrollY
-	})
-
-	var winwidth = window.innerWidth
-	var winheight = window.innerHeight
-	let mouseX = 0
-	let mouseY = 0
-
+	window.addEventListener('scroll', () => { scrollY = window.scrollY })
 	document.addEventListener("mousemove", (e) => {
 		mouseX = e.clientX
 		mouseY = e.clientY
 	})
-	
-	const textureLoader = new THREE.TextureLoader()
 
 	canvas = document.querySelector('canvas.webgl')
-	renderer = new THREE.WebGLRenderer({
-		alpha: true,
-		canvas: canvas,
-		antialias: true,
-	})
-
-	renderer.setSize(winwidth, winheight)
-	renderer.setPixelRatio( Math.min(window.devicePixelRatio, 3) )
+	renderer = new THREE.WebGLRenderer({ alpha: true, canvas: canvas, antialias: true })
+	renderer.setSize(sizes.width, sizes.height)
+	renderer.setPixelRatio( Math.min(window.devicePixelRatio, 2) )
+	renderer.toneMappingExposure = 1.15
+	renderer.outputColorSpace = THREE.SRGBColorSpace
+	renderer.toneMapping = THREE.ACESFilmicToneMapping
+	renderer.useLegacyLights = false
 	renderer.shadowMap.enabled = true
-	renderer.shadowMap.type = THREE.PCFSoftShadowMap
-	renderer.toneMappingExposure = 1
-	renderer.gammaInput = true
-	renderer.gammaOutput = true
-	renderer.outputColorSpace = THREE.LinearSRGBColorSpace
-	renderer.toneMapping = THREE.ReinhardToneMapping
 
 	scene = new THREE.Scene()
 
-	camera = new THREE.PerspectiveCamera(45, winwidth / winheight, 0.1, 1000)
-	camera.position.set( 0, 0, 3.2 )
+	camera = new THREE.PerspectiveCamera(35, sizes.width / sizes.height, 0.1, 100)
+	camera.position.set( 0, 0, 3.5 )
 	camera.lookAt( 0, 0, 0 )
 	scene.add(camera)
 
-	// const controls = new OrbitControls(camera, canvas)
-	// controls.enableDamping = true
-	// controls.enableZoom = false
-	// controls.minAzimuthAngle = -(Math.PI / 10)
-	// controls.maxAzimuthAngle = Math.PI / 10
-	// controls.enabled = false
-
-	// areaLight = new THREE.HemisphereLight( 0xffffff, 0x000000, 30 )
-	// camera.add( areaLight )
-
-	// const al = new THREE.AmbientLight(0xffffff, 100);
-	// camera.add( al )
-	
-	spotLight = new THREE.SpotLight( 0xffffff, 100 )
-	spotLight.position.set( 0, 4, 20 )
-	spotLight.angle = Math.PI / 6
-	spotLight.penumbra = 1
-	spotLight.distance = 200
-	spotLight.intensity = 100.0
-	spotLight.focus = 1.0
-	spotLight.decay = 1.0
-	camera.add( spotLight )
-	camera.add( spotLight.target )
-
-	// Bendy Plane
-	const bendyPlane = new THREE.PlaneGeometry(10/16, 10/9, 16, 16)
-	const positions = bendyPlane.attributes.position
-
-	const axis = new THREE.Vector3(0, 1, 0)
-	const axisPosition = new THREE.Vector3(-2, 0, 2)
-	const vTemp = new THREE.Vector3(0, 0, 0)
-	let lengthOfArc
-	let angleOfArc
-
-	for (let i = 0; i < positions.count; i++){
-		vTemp.fromBufferAttribute(positions, i);
-		lengthOfArc = (vTemp.x - axisPosition.x);
-		angleOfArc = (lengthOfArc / axisPosition.z);
-		vTemp.setX(0).setZ(-axisPosition.z).applyAxisAngle(axis, -angleOfArc).add(axisPosition);
-		positions.setXYZ(i, vTemp.x, vTemp.y, vTemp.z);
-	}
-  
-	const video = document.getElementById( 'video' )
-	const videoTex = new THREE.VideoTexture( video )
-	const material = new THREE.MeshBasicMaterial({ map: videoTex })
-	const backdrop = new THREE.Mesh(bendyPlane, material)
-	backdrop.scale.multiplyScalar(2)
-	backdrop.position.set( 0,0,0 )
-	backdrop.position.z = -10
-	backdrop.rotation.set(0,1,0)
-	scene.add(backdrop)
-	backdrop.position.y = -5
-	//backdrop.position.y = 100//- ( winheight / 2 ) / 1.5
-  
-	const hdrEquirect = new RGBELoader().load(
-		"https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/dancing_hall_1k.hdr",
-		() => {
-			hdrEquirect.mapping = THREE.EquirectangularReflectionMapping
-		}
-	)
-
-	const textMat = new THREE.MeshPhysicalMaterial({
-		metalness: 1.0,
-		roughness: 0.1,
-		thickness: 0.1,
-		side: THREE.DoubleSide,
+	// Video tex
+	const video1 = document.getElementById( 'video1' )
+	const video2 = document.getElementById( 'video2' )
+	const video3 = document.getElementById( 'video3' )
+	const videoTex1 = new THREE.VideoTexture( video1 )
+	const videoTex2 = new THREE.VideoTexture( video2 )
+	const videoTex3 = new THREE.VideoTexture( video3 )
+	const videoMat1 = new THREE.MeshBasicMaterial({ 
+		map: videoTex1
+	})
+	const videoMat2 = new THREE.MeshBasicMaterial({ 
+		map: videoTex2
+	})
+	const videoMat3 = new THREE.MeshBasicMaterial({ 
+		map: videoTex3
 	})
 	
-	let otherNormal = "https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/normal.jpg"
-	const normalMapTex = textureLoader.load( otherNormal )//"https://uploads-ssl.webflow.com/640267beea11d62d4c670caa/64562480fc489551f75c6ad0_normal-min.jpg")
-	normalMapTex.wrapS = THREE.RepeatWrapping
-	normalMapTex.wrapT = THREE.RepeatWrapping
-	normalMapTex.repeat.set(4, 4)
-	sickassGlass = Object.assign(new MeshTransmissionMaterialImpl(10), {
-		clearcoat: 1,
-		clearcoatRoughness: 0.1,
-		transmission: 1,
-		chromaticAberration: 0.02,
-		anistropy: 0.4,
-		roughness: 0.08,
-		envMap: hdrEquirect,
-		envMapIntensity: 1.5,
-		thickness: 3,
-		ior: 1.1,
-		distortion: 0.5,
-		distortionScale: 0.4,
-		temporalDistortion: 0.6,
-		//normalScale: new THREE.Vector2(2),
-		normalMap: normalMapTex,
-	})
-
 	const getRandomParticelPos = (particleCount) => {
 		const arr = new Float32Array(particleCount * 3)
 		for (let i = 0; i < particleCount; i++) {
@@ -194,85 +87,142 @@ function init() {
 	}
 
 	const sparkleGeos = [new THREE.BufferGeometry(), new THREE.BufferGeometry()]
-	sparkleGeos[0].setAttribute("position",new THREE.BufferAttribute(getRandomParticelPos(350), 3))
-	sparkleGeos[1].setAttribute("position",new THREE.BufferAttribute(getRandomParticelPos(1500), 3))
+	sparkleGeos[0].setAttribute("position", new THREE.BufferAttribute(getRandomParticelPos(950), 3))
+	sparkleGeos[1].setAttribute("position", new THREE.BufferAttribute(getRandomParticelPos(650), 3))
 	const sparkleMats = [
-		new THREE.PointsMaterial({size: 0.05,map: textureLoader.load("https://uploads-ssl.webflow.com/640267beea11d62d4c670caa/6456e47757b421045d4ea093_sparkle2.png"),transparent: true}),
-		new THREE.PointsMaterial({size: 0.075,map: textureLoader.load("https://uploads-ssl.webflow.com/640267beea11d62d4c670caa/6456e474861910efcebc5cae_sparkle1.png"),transparent: true})
+		new THREE.PointsMaterial({size: 0.05, map: textureLoader.load("https://uploads-ssl.webflow.com/640267beea11d62d4c670caa/6456e47757b421045d4ea093_sparkle2.png"),transparent: true}),
+		new THREE.PointsMaterial({size: 0.075, map: textureLoader.load("https://uploads-ssl.webflow.com/640267beea11d62d4c670caa/6456e474861910efcebc5cae_sparkle1.png"),transparent: true})
 	]
 
+	// ADD MODELS
+	let envMapLoader = new THREE.PMREMGenerator( renderer )
+	new RGBELoader().load("https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/dancing_hall_1k.hdr",
+		function(hdrmap) {
+			let envmap = envMapLoader.fromCubemap(hdrmap)
+			hdrmap.mapping = THREE.EquirectangularReflectionMapping
+			sickassGlass = Object.assign(new MeshTransmissionMaterialImpl(10), {
+				clearcoat: 1,
+				clearcoatRoughness: 0.1,
+				transmission: 1,
+				chromaticAberration: 0.02,
+				anistropy: 0.3,
+				roughness: 0.275,
+				envMap: envmap.texture,
+				envMapIntensity: 1.5,
+				thickness: 3,
+				ior: 1.03,
+				distortion: 0.5,
+				distortionScale: 0.9,
+				temporalDistortion: 0.6
+			})
+			const textMat = new THREE.MeshPhysicalMaterial({
+				metalness: 1.0,
+				roughness: 0.21,
+				clearcoat: 1.0,
+				envMap: envmap.texture,
+				envMapIntensity: 1.0,
+				side: THREE.DoubleSide,
+			})
+			const gltfLoader = new GLTFLoader()
+			gltfLoader.load(
+				'https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/alvlogo.glb',
+				(gltf) => {
+				gltf.scene.scale.multiplyScalar( 1 / 100 )
+				gltf.scene.traverse( function ( obj ) {
+					if ( obj instanceof THREE.Mesh ) {
+						const model = obj          
+						if ( model.name == 'Logo' ) {
+							logoModel = model
+							logoModel.material = sickassGlass
+							logoModel.rotation.x = 1.5
+							logoModel.rotation.z = 0.4
+						}
+						if ( model.name == 'Text' ) {
+							logoTextModel = model
+							logoTextModel.material = textMat
+							logoTextModel.position.y = -385//-( Math.min(sizes.height / 2) / 1.3 )
+						}
+					}
+				})
+				scene.add( gltf.scene )
+				gltf.scene.scale.set(0.0055,0.0055,0.0055)
+				gltf.scene.position.z = 1
+				logoModel.position.y = 0
+				setTimeout( () => {
+					if (logoModel) {
+						logoModel.position.y = -400
+					}
+				}, 10)
+				
+				animate()
+			})
+		}
+	)
+
+	// ADD VIDEOS
+	const planeMat = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} )
+	const planeGeo = new THREE.PlaneGeometry( 1,1.75 )
+	const vPlane1 = new THREE.Mesh( planeGeo, videoMat1 )
+	const vPlane2 = new THREE.Mesh( planeGeo, videoMat2 )
+	const vPlane3 = new THREE.Mesh( planeGeo, videoMat3 )
+
+	vPlane1.position.set( -1.5, -2.9, -1.3 )
+	vPlane2.position.set( 1.2, -3.6, -0.9 )
+	vPlane3.position.set( -0.2, -4.0, -2.0 )
+	scene.add( vPlane1 )
+	scene.add( vPlane2 )
+	scene.add( vPlane3 )
+
+	// ADD SPARKLES
+	sparkles1 = new THREE.Points(sparkleGeos[0], sparkleMats[0])
+	sparkles2 = new THREE.Points(sparkleGeos[1], sparkleMats[1])
+	scene.add(sparkles1)
+	scene.add(sparkles2)
+	console.log("sparkles1 Y position: ", sparkles1.position.y)
+
+	// RENDERPASS
+	renderPass = new RenderPass( scene, camera )
+	renderPass.clearColor = new THREE.Color( 0, 0, 0 )
+	renderPass.clearAlpha = 0
+
+	composer = new EffectComposer( renderer )
+	composer.setSize( sizes.width, sizes.height )
+	composer.setPixelRatio( window.devicePixelRatio, 2 )
+	composer.addPass( renderPass )
+	
+	const chroma = new ShaderPass( RGBShiftShader )
+	chroma.uniforms['amount'].value = 0.0005
+
 	const bloomPass = new UnrealBloomPass(
-		new THREE.Vector2(winwidth, winheight),
+		new THREE.Vector2(sizes.width, sizes.height),
 		bloomparams.bloomStrength,
 		bloomparams.bloomRadius,
 		bloomparams.bloomThreshold
 	)
 
-	sparkles1 = new THREE.Points(sparkleGeos[0], sparkleMats[0])
-	sparkles2 = new THREE.Points(sparkleGeos[1], sparkleMats[1])
-	scene.add(sparkles1)
-	scene.add(sparkles2)
-
-	renderPass = new RenderPass( scene, camera )
-	renderPass.clearColor = new THREE.Color( 0, 0, 0 )
-	renderPass.clearAlpha = 0
-	
-	const fxaaPass = new ShaderPass( FXAAShader )
-
-	composer = new EffectComposer( renderer )
-	composer.setSize( winwidth, winheight )
-	composer.setPixelRatio( window.devicePixelRatio, 3 )
-	composer.addPass( renderPass )
-	composer.addPass( bloomPass )
-	//composer.addPass( fxaaPass )
-
-	const chroma = new ShaderPass( RGBShiftShader )
-	chroma.uniforms['amount'].value = 0.0004
-	//composer.addPass( chroma )
-		
-	const gltfLoader = new GLTFLoader()
-	gltfLoader.load('https://afterlight.sfo2.digitaloceanspaces.com/shared/troika/alvlogo.glb', (gltf) => {
-		gltf.scene.scale.multiplyScalar( 1 / 100 )
-		gltf.scene.traverse( function ( obj ) {
-			if ( obj instanceof THREE.Mesh ) {
-				obj.castShadow = true
-				obj.receiveShadow = true
-				const model = obj          
-				if ( model.name == 'Logo' ) {
-					logoModel = model
-					logoModel.material = sickassGlass
-					logoModel.position.y = -( winheight / 2 ) / 1.35
-					logoModel.rotation.x = 0.9
-				}
-				if ( model.name == 'Text' ) {
-					logoTextModel = model
-					logoTextModel.material = textMat
-					logoTextModel.position.y = -( winheight / 2 ) / 1.35
-				}
-			}
-		})
-		scene.add( gltf.scene )
-		animate()
-	})
+	composer.addPass( chroma )
+	//composer.addPass( bloomPass )
 
 	const render = (time) => {
-		sparkles1.position.x = mouseX * 0.0001
-		sparkles1.position.y = mouseY * -0.0001
-		sparkles2.position.x = mouseX * 0.0001
-		sparkles2.position.y = mouseY * -0.0001
-		camera.position.y =  - (scrollY / winheight) * 3
+		sparkles1.position.x = mouseX * 0.00005
+		sparkles1.position.y = mouseY * -0.00005
+		sparkles2.position.x = mouseX * 0.00005
+		sparkles2.position.y = mouseY * -0.00005
+		//vPlane1.rotation.y = mouseX * 0.0001
+		//vPlane2.rotation.y = mouseX * 0.0001
+		camera.position.y =  - scrollY / sizes.height * objectsDistance
+		window.addEventListener('resize', resizeCanvasToDisplaySize)
 		requestAnimationFrame( render )
 	}
-  
 	requestAnimationFrame( render )
-	window.addEventListener( 'resize', onWindowResize, false )
-
 }
+
+init()
 
 function animate() {  
 	if (logoModel) { 
-		//logoModel.rotation.x += 0.001
-		logoModel.rotation.y += 0.002
+		logoModel.rotation.x += 0.0008
+		logoModel.rotation.y += 0.001
 	}
 	const time = performance.now() / 3000
 	requestAnimationFrame( animate )
@@ -283,14 +233,18 @@ function composeRender() {
 	composer.render()
 }
 
-function onWindowResize() {
-	const width = winwidth
-	const height = winheight
-	const canvas = renderer.domElement
-	camera.aspect = canvas.clientWidth/canvas.clientHeight
-	camera.updateProjectionMatrix()
-	renderer.setSize( width, height )
-	renderer.setPixelRatio( window.devicePixelRatio, 3 )
-	composer.setSize( width, height )
-	composer.setPixelRatio( window.devicePixelRatio, 3 )
+function resizeCanvasToDisplaySize() {
+	// Update sizes
+    sizes.width = window.innerWidth
+    sizes.height = window.innerHeight
+
+	// Update camera
+    camera.aspect = sizes.width / sizes.height
+    camera.updateProjectionMatrix()
+
+	// Update renderer/composer
+	renderer.setSize(sizes.width, sizes.height)
+	renderer.setPixelRatio( Math.min(window.devicePixelRatio, 2) )
+	composer.setSize(sizes.width, sizes.height)
+	composer.setPixelRatio( Math.min(window.devicePixelRatio, 2) )
 }
